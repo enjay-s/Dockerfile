@@ -1,0 +1,6 @@
+FROM centos:centos7
+USER root
+
+COPY build.sh /
+ENV BUILD_TYPE Release
+CMD ["/bin/bash", "/build.sh"]

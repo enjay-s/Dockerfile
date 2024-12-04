@@ -1,0 +1,79 @@
+FROM centos:centos7
+USER root
+
+
+WORKDIR /root/
+
+RUN mv /etc/yum.repos.d /etc/yum.repos.d.bk && mkdir /etc/yum.repos.d  && \
+    curl -L -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && \
+    sed -i 's/http/https/g' /etc/yum.repos.d/CentOS-Base.repo && \
+    yum clean all &&  yum makecache && \
+    yum groupinstall "Development Tools" -y &&  \
+    yum install -y centos-release-scl wget git swig unzip openssh-server gzip bash binutils bzip2 coreutils diffutils \
+    findutils grep hostname ncurses-base passwd perl procps psmisc python3 sed tar tzdata util-linux curl make make perl-core zlib-devel
+
+COPY tools ${WORKDIR}/tools
+
+# ninja
+RUN cd ${WORKDIR}/tools && \
+    unzip ninja-linux.zip && mv ninja /usr/local/bin/
+
+# foundationdb
+RUN cd ${WORKDIR}/tools && \
+    yum localinstall -y foundationdb-clients-7.1.27-1.el7.x86_64.rpm
+
+# cmake
+RUN cd ${WORKDIR}/tools && \
+    mkdir /usr/local/cmake-3.25.3 && ./cmake-3.25.3-linux-x86_64.sh --skip-license --prefix=/usr/local/cmake-3.25.3
+
+ENV PATH /usr/local/cmake-3.25.3/bin:${PATH}
+
+# openssl todo --prefix=/usr/local/openssl-1.1.1i --openssldir=/usr/local/openssl-1.1.1i
+RUN cd ${WORKDIR}/tools && \
+    mkdir /usr/local/openssl-1.1.1i && \
+    tar -zxvf openssl-1.1.1i.tar.gz && cd openssl-1.1.1i && \
+    ./config shared zlib && \
+    make -j $(nproc) && make install
+
+# gcc
+RUN if [ ! -f "/root/tools/gcc-10.2.0.zip" ];then \
+  cd ${WORKDIR}/tools/ && tar -zxvf gcc-10.2.0.tar.gz && cd gcc-10.2.0 && ./contrib/download_prerequisites ; \
+else \
+  cd ${WORKDIR}/tools/ && unzip gcc-10.2.0.zip && cd gcc-10.2.0 ; \
+fi
+
+RUN cd ${WORKDIR}/tools/gcc-10.2.0 &&  \
+    mkdir /usr/local/gcc-10.2.0 && \
+    ./configure --prefix=/usr/local/gcc-10.2.0 --enable-checking=release --enable-languages=c,c++ --disable-multilib && \
+    make -j $(nproc) && make install
+
+RUN if [ ! -f "/lib64/libstdc++.so.6" ];then \
+  ln -s /usr/local/gcc-10.2.0/lib64/libstdc++.so.6 /lib64/libstdc++.so.6 ; \
+else \
+  rm -rf /lib64/libstdc++.so.6 && ln -s /usr/local/gcc-10.2.0/lib64/libstdc++.so.6 /lib64/libstdc++.so.6 ; \
+fi
+
+ENV PATH /usr/local/gcc-10.2.0/bin:${PATH}
+ENV LD_LIBRARY_PATH /usr/local/gcc-10.2.0/lib64/:$LD_LIBRARY_PATH
+ENV GCC_TOOLCHAIN /usr/local/gcc-10.2.0
+
+# llvm
+RUN cd ${WORKDIR}/tools && \
+    mkdir /usr/local/llvm-11.1.0 && \
+    mkdir llvm-11.1.0.build && \
+    tar -xf llvm-11.1.0.src.tar.xz && \
+    tar -xf lld-11.1.0.src.tar.xz && mv lld-11.1.0.src lld && \
+    tar -xf compiler-rt-11.1.0.src.tar.xz && mv compiler-rt-11.1.0.src compiler-rt && \
+    tar -xf clang-11.1.0.src.tar.xz && mv clang-11.1.0.src clang && \
+    cmake -S ./llvm-11.1.0.src -B ./llvm-11.1.0.build -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-11.1.0 -G Ninja \
+    -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt" -DCMAKE_BUILD_TYPE=Release  \
+    -DCMAKE_C_COMPILER=/usr/local/gcc-10.2.0/bin/gcc  -DCMAKE_CXX_COMPILER=/usr/local/gcc-10.2.0/bin/g++ && \
+    cd llvm-11.1.0.build && ninja -j 70 && ninja install
+
+ENV PATH /usr/local/llvm-11.1.0/bin:${PATH}
+ENV LD_LIBRARY_PATH  /usr/local/llvm-11.1.0/lib/:$LD_LIBRARY_PATH
+
+RUN rm -rf ${WORKDIR}/tools
+
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

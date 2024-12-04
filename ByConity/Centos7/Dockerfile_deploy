@@ -1,0 +1,13 @@
+FROM centos:centos7
+
+USER root
+
+copy rpm
+
+install rpm
+
+systemctl
+
+node_exporter
+
+start.sh
