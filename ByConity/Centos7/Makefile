@@ -47,11 +47,11 @@ build: base
     --cap-add=SYS_PTRACE -e CCACHE_DIR=$(HOME)/.ccache -it $(BASE_IMAGE)
 	echo "build finish"
 
-rpm:
+rpm: build
 	echo "rpm start"
 	test -d $(RPM_PROJECT) || git clone https://github.com/enjay-s/build_byconity_rpm.git $(RPM_PROJECT)
-    export BYCONITY_BUILD_DIR=$(RPM_PROJECT)/build_docker_centos
-	rpmbuild -ba $(RPM_PROJECT)/SPECS/clickhouse.spec
+	rpmbuild -ba $(RPM_PROJECT)/SPECS/byconity.spec  --define "BYCONITY_BUILD_DIR $(PROJECT)/build_docker_centos" \
+        --define "BYCONITY_CONIF_DIR $(RPM_PROJECT)/BUILD"
 	echo "rpm finish"
 
 deploy: rpm
