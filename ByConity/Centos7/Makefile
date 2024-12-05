@@ -56,7 +56,8 @@ rpm: build
 
 deploy: rpm
 	echo "deploy start"
-	docker build --network=host -t $(DEPLOY_IMAGE) --build-arg BASE_IMAGE=$(BASE_IMAGE) -f ./Dockerfile_deploy .
+	docker build --network=host -t $(DEPLOY_IMAGE) --build-arg BASE_IMAGE=$(BASE_IMAGE) RPM_DIR=$(RPM_DIR) \
+	RPM_NAME=$(RPM_NAME) -f ./Dockerfile_deploy .
 	echo "deploy finish"
 
 push: deploy

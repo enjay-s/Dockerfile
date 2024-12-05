@@ -2,12 +2,9 @@ FROM centos:centos7
 
 USER root
 
-copy rpm
+COPY $RPM_DIR/$RPM_NAME /${RPM_NAME}
 
-install rpm
-
-systemctl
-
-node_exporter
-
-start.sh
+RUN rpm -ivh --nodeps /${RPM_NAME} && \
+    rm -rf /${RPM_NAME} && \
+    systemctl daemon-reload
+# && systemctl enable byconity-server.service

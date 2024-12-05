@@ -1,4 +1,5 @@
-FROM centos:centos7
+ARG BASE_IMAGE=byconity_base:latest
+FROM ${BASE_IMAGE}
 USER root
 
 COPY build.sh /
