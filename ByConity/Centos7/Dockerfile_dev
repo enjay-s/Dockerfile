@@ -5,14 +5,8 @@ RUN yum groupinstall "GNOME Desktop" -y && \
   systemctl set-default graphical.target && \
   yum install tigervnc-server -y \
 
-COPY  ../../vncserver.service  /etc/systemd/system/vncserver.service
+COPY  vncserver.service  /etc/systemd/system/vncserver.service
 
-RUN  systemctl daemon-reload && \
-  systemctl enable vncserver.service
+COPY dev.sh /
 
-#vncpasswd
-#firewall-cmd --permanent --add-port=5901/tcp
-#firewall-cmd --reload
-#firewall-cmd --permanent --add-service vnc-server
-#systemctl restart firewalld.service
-#netstat -lnpt|grep Xvnc
+CMD ["/bin/bash", "/dev.sh"]

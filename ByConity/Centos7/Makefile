@@ -30,21 +30,21 @@ base: tools
 	docker build --network=host -t $(BASE_IMAGE) -f ./Dockerfile_base .
 	echo "base finish"
 
-dev: base
+dev:
 	echo "dev start"
-	docker build --network=host -t $(DEV_IMAGE) -build-arg BASE_IMAGE=$(BASE_IMAGE)  -f ./Dockerfile_dev  .
+	docker build --network=host -t $(DEV_IMAGE) --build-arg BASE_IMAGE=$(BASE_IMAGE)  -f ./Dockerfile_dev  .
 	mkdir -p $(HOME)/.ccache
-	docker run --name byconity_dev --network=host -p 5901:5901 6001:6001 --user=$(UID):$(GID) --rm --workdir /server \
-    --volume $(PROJECT):/server --cap-add=SYS_PTRACE -e CCACHE_DIR=$(HOME)/.ccache -it $(BASE_IMAGE)
+	docker run --name byconity_dev --privileged --network=host -p 5901:5901 -p 6001:6001 --user=$(UID):$(GID) \
+	--rm --workdir /server --volume $(PROJECT):/server --cap-add=SYS_PTRACE -e CCACHE_DIR=$(HOME)/.ccache -it $(DEV_IMAGE) /usr/sbin/init
 	echo "dev finish"
 
-build: base
+build:
 	echo "build start"
-	docker build --network=host -t $(BUILD_IMAGE) -build-arg BASE_IMAGE=$(BASE_IMAGE) BUILD_TYPE=$(BUILD_TYPE) -f ./Dockerfile_build .
+	docker build --network=host -t $(BUILD_IMAGE) --build-arg BASE_IMAGE=$(BASE_IMAGE) BUILD_TYPE=$(BUILD_TYPE) -f ./Dockerfile_build .
 	test -d $(PROJECT) || git clone -b jasong_online --recursive https://github.com/ByConity/ByConity.git $(PROJECT)
 	mkdir -p $(HOME)/.ccache
-	docker run --name byconity_build --network=host --user=$(UID):$(GID) --rm --workdir /server --volume $(PROJECT):/server \
-    --cap-add=SYS_PTRACE -e CCACHE_DIR=$(HOME)/.ccache -it $(BASE_IMAGE)
+	docker run --name byconity_build --privileged --network=host --user=$(UID):$(GID) --rm --workdir /server \
+    --volume $(PROJECT):/server --cap-add=SYS_PTRACE -e CCACHE_DIR=$(HOME)/.ccache -it $(BUILD_IMAGE)
 	echo "build finish"
 
 rpm: build
@@ -56,8 +56,7 @@ rpm: build
 
 deploy: rpm
 	echo "deploy start"
-	docker build --network=host -t $(DEPLOY_IMAGE) --build-arg BASE_IMAGE=$(BASE_IMAGE) RPM_DIR=$(RPM_DIR) \
-	RPM_NAME=$(RPM_NAME) -f ./Dockerfile_deploy .
+	docker build --network=host -t $(DEPLOY_IMAGE) --build-arg RPM_DIR=$(RPM_DIR) RPM_NAME=$(RPM_NAME) -f ./Dockerfile_deploy .
 	echo "deploy finish"
 
 push: deploy
